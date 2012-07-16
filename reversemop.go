@@ -9,6 +9,49 @@ import (
 	"sync"
 )
 
+type SubnetIterator struct {
+	Current net.IP
+	Net net.IPNet
+}
+
+func NewSubnetIterator(s string) (SubnetIterator, error) {
+	sni := SubnetIterator{}
+	_, ipnet, err := net.ParseCIDR(s)
+	if err != nil {
+		return sni, err
+	}
+	sni.Net = *ipnet
+
+	sni.Current = ipnet.IP.Mask(ipnet.Mask)
+	if err != nil {
+		return sni, err
+	}
+	
+	return sni, nil
+}
+
+func (sni *SubnetIterator) Next() bool {
+	var ip_int int32
+	buf := bytes.NewBuffer(sni.Current)
+	if err := binary.Read(buf, binary.BigEndian, &ip_int); err != nil {
+		panic("Internal error converting IP to integer")
+	}
+	ip_int += 1
+
+	buf = new(bytes.Buffer)
+	if err := binary.Write(buf, binary.BigEndian, ip_int); err != nil {
+		panic("Internal error converting integer to IP")
+	}
+	ip := buf.Bytes()
+	
+	if !sni.Net.Contains(ip) {
+		return false
+	}
+
+	sni.Current = ip
+	return true
+}
+
 var wg sync.WaitGroup
 
 func lookup(in_chan chan net.IP, goroutine_id int) {
@@ -23,58 +66,28 @@ func lookup(in_chan chan net.IP, goroutine_id int) {
 	wg.Done()
 }
 
-func ipToInt(addr net.IP) (int32, error) {
-	var ip_int int32
-	buf := bytes.NewBuffer(addr)
-	err := binary.Read(buf, binary.BigEndian, &ip_int)
-	return ip_int, err
-}
-
-func intToIp(ip_int int32) (net.IP, error) {
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.BigEndian, ip_int)
-	return buf.Bytes(), err
-}
-
 func main() {
 	if len(os.Args) != 2 {
 		fmt.Println("Usage: reversemop 1.2.3.4/24")
 		return
 	}
 	
-	_, ipnet, err := net.ParseCIDR(os.Args[1])
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	ip := ipnet.IP.Mask(ipnet.Mask)
-	ip_int, err := ipToInt(ip)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
 	in_chan := make(chan net.IP, 100)
 
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go lookup(in_chan, i)
 	}
+	
+	sni, err := NewSubnetIterator(os.Args[1])
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	for {
-		ip_int += 1
-		ip, err = intToIp(ip_int)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		if !ipnet.Contains(ip) {
-			break
-		}
-
-		in_chan <- ip
+	in_chan <- sni.Current
+	for sni.Next() {
+		in_chan <- sni.Current
 	}
 	close(in_chan)
 	wg.Wait()
