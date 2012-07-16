@@ -31,15 +31,15 @@ func NewSubnetIterator(s string) (SubnetIterator, error) {
 }
 
 func (sni *SubnetIterator) Next() bool {
-	var ip_int int32
+	var intIP int32
 	buf := bytes.NewBuffer(sni.Current)
-	if err := binary.Read(buf, binary.BigEndian, &ip_int); err != nil {
+	if err := binary.Read(buf, binary.BigEndian, &intIP); err != nil {
 		panic("Internal error converting IP to integer")
 	}
-	ip_int += 1
+	intIP += 1
 
 	buf = new(bytes.Buffer)
-	if err := binary.Write(buf, binary.BigEndian, ip_int); err != nil {
+	if err := binary.Write(buf, binary.BigEndian, intIP); err != nil {
 		panic("Internal error converting integer to IP")
 	}
 	ip := buf.Bytes()
@@ -54,8 +54,8 @@ func (sni *SubnetIterator) Next() bool {
 
 var wg sync.WaitGroup
 
-func lookup(in_chan chan net.IP, goroutine_id int) {
-	for ip := <-in_chan; ip != nil; ip = <-in_chan {
+func lookup(inChan chan net.IP, goroutineId int) {
+	for ip := <-inChan; ip != nil; ip = <-inChan {
 		addrs, err := net.LookupAddr(ip.String())
 		if err != nil {
 			// fmt.Println(err)
@@ -72,11 +72,11 @@ func main() {
 		return
 	}
 	
-	in_chan := make(chan net.IP, 100)
+	inChan := make(chan net.IP, 100)
 
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
-		go lookup(in_chan, i)
+		go lookup(inChan, i)
 	}
 	
 	sni, err := NewSubnetIterator(os.Args[1])
@@ -85,10 +85,10 @@ func main() {
 		return
 	}
 
-	in_chan <- sni.Current
+	inChan <- sni.Current
 	for sni.Next() {
-		in_chan <- sni.Current
+		inChan <- sni.Current
 	}
-	close(in_chan)
+	close(inChan)
 	wg.Wait()
 }
