@@ -52,10 +52,34 @@ func (sni *SubnetIterator) Next() bool {
 	return true
 }
 
-var wg sync.WaitGroup
+type WorkerPool struct {
+	inChan chan interface{}
+	wg sync.WaitGroup
+}
 
-func lookup(inChan chan net.IP, goroutineId int) {
-	for ip := <-inChan; ip != nil; ip = <-inChan {
+func NewWorkerPool (workers int) *WorkerPool {
+	wp := &WorkerPool{}
+	wp.inChan = make(chan interface{}, 100)
+	for i := 0; i < workers; i++ {
+		wp.wg.Add(1)
+		go wp.worker()
+	}
+	
+	return wp
+}
+
+func (wp *WorkerPool) AddJob(job interface{}) {
+	wp.inChan <- job
+}
+
+func (wp *WorkerPool) Shutdown() {
+	close(wp.inChan)
+	wp.wg.Wait()
+}
+
+func (wp *WorkerPool) worker() {
+	for in := <- wp.inChan; in != nil; in = <- wp.inChan {
+		ip := in.(net.IP)
 		addrs, err := net.LookupAddr(ip.String())
 		if err != nil {
 			// fmt.Println(err)
@@ -63,7 +87,7 @@ func lookup(inChan chan net.IP, goroutineId int) {
 			fmt.Println(ip, addrs[0])
 		}
 	}
-	wg.Done()
+	wp.wg.Done()
 }
 
 func main() {
@@ -72,23 +96,17 @@ func main() {
 		return
 	}
 	
-	inChan := make(chan net.IP, 100)
-
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go lookup(inChan, i)
-	}
-	
+	wp := NewWorkerPool(10)
 	sni, err := NewSubnetIterator(os.Args[1])
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	inChan <- sni.Current
+	wp.AddJob(sni.Current)
 	for sni.Next() {
-		inChan <- sni.Current
+		wp.AddJob(sni.Current)
 	}
-	close(inChan)
-	wg.Wait()
+	
+	wp.Shutdown()
 }
