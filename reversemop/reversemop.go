@@ -55,10 +55,11 @@ func (sni *SubnetIterator) Next() bool {
 type WorkerPool struct {
 	inChan chan interface{}
 	wg sync.WaitGroup
+	jobFunction func(interface{})
 }
 
-func NewWorkerPool (workers int) *WorkerPool {
-	wp := &WorkerPool{}
+func NewWorkerPool (workers int, jobFunction func(interface{})) *WorkerPool {
+	wp := &WorkerPool{jobFunction: jobFunction}
 	wp.inChan = make(chan interface{}, 100)
 	for i := 0; i < workers; i++ {
 		wp.wg.Add(1)
@@ -79,15 +80,19 @@ func (wp *WorkerPool) Shutdown() {
 
 func (wp *WorkerPool) worker() {
 	for in := <- wp.inChan; in != nil; in = <- wp.inChan {
-		ip := in.(net.IP)
-		addrs, err := net.LookupAddr(ip.String())
-		if err != nil {
-			// fmt.Println(err)
-		} else {
-			fmt.Println(ip, addrs[0])
-		}
+		wp.jobFunction(in)
 	}
 	wp.wg.Done()
+}
+
+func reverseLookupJob(in interface{}) {
+	ip := in.(net.IP)
+	addrs, err := net.LookupAddr(ip.String())
+	if err != nil {
+		// fmt.Println(err)
+	} else {
+		fmt.Println(ip, addrs[0])
+	}
 }
 
 func main() {
@@ -96,7 +101,7 @@ func main() {
 		return
 	}
 	
-	wp := NewWorkerPool(10)
+	wp := NewWorkerPool(10, reverseLookupJob)
 	sni, err := NewSubnetIterator(os.Args[1])
 	if err != nil {
 		fmt.Println(err)
