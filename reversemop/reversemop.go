@@ -98,9 +98,7 @@ func reverseLookupJob(in interface{}) {
 	m.SetQuestion(rname, dns.TypePTR)
 	m.MsgHdr.RecursionDesired = true
 	
-	idx := rand.Intn(len(dnsConf.Servers))
-	srv := dnsConf.Servers[idx]
-	fmt.Println(idx, srv)
+	srv := dnsConf.Servers[rand.Intn(len(dnsConf.Servers))]
 	r, err := c.Exchange(m, srv + ":" + dnsConf.Port)
 	if err != nil {
 		fmt.Println(ip, err)
