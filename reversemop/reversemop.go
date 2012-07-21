@@ -108,8 +108,9 @@ func reverseLookupJob(in interface{}) {
 	}
 	
 	for _, a := range r.Answer {
-		ptr := a.(*dns.RR_PTR)
-		fmt.Printf("%v\n", ptr.Ptr)
+		if ptr, ok := a.(*dns.RR_PTR); ok {
+			fmt.Printf("%v\n", ptr.Ptr)
+		}
 	}
 }
 
