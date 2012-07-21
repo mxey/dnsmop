@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 	"github.com/miekg/dns"
+	"math/rand"
 )
 
 var dnsConf *dns.ClientConfig
@@ -97,7 +98,10 @@ func reverseLookupJob(in interface{}) {
 	m.SetQuestion(rname, dns.TypePTR)
 	m.MsgHdr.RecursionDesired = true
 	
-	r, err := c.Exchange(m, dnsConf.Servers[0] + ":" + dnsConf.Port)
+	idx := rand.Intn(len(dnsConf.Servers))
+	srv := dnsConf.Servers[idx]
+	fmt.Println(idx, srv)
+	r, err := c.Exchange(m, srv + ":" + dnsConf.Port)
 	if err != nil {
 		fmt.Println(err)
 		return
