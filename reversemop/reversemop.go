@@ -103,7 +103,7 @@ func reverseLookupJob(in interface{}) {
 	fmt.Println(idx, srv)
 	r, err := c.Exchange(m, srv + ":" + dnsConf.Port)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(ip, err)
 		return
 	}
 	if r.Rcode != dns.RcodeSuccess {
