@@ -7,7 +7,10 @@ import (
 	"net"
 	"os"
 	"sync"
+	"github.com/miekg/dns"
 )
+
+var dnsConf *dns.ClientConfig
 
 type SubnetIterator struct {
 	Current net.IP
@@ -87,11 +90,26 @@ func (wp *WorkerPool) worker() {
 
 func reverseLookupJob(in interface{}) {
 	ip := in.(net.IP)
-	addrs, err := net.LookupAddr(ip.String())
+	m := new(dns.Msg)
+	c := new(dns.Client)
+	
+	rname, _ :=  dns.ReverseAddr(ip.String())
+	m.SetQuestion(rname, dns.TypePTR)
+	m.MsgHdr.RecursionDesired = true
+	
+	r, err := c.Exchange(m, dnsConf.Servers[0] + ":" + dnsConf.Port)
 	if err != nil {
-		// fmt.Println(err)
-	} else {
-		fmt.Println(ip, addrs[0])
+		fmt.Println(err)
+		return
+	}
+	if r.Rcode != dns.RcodeSuccess {
+		fmt.Println("Failed: ", r.Rcode)
+		return
+	}
+	
+	for _, a := range r.Answer {
+		ptr := a.(*dns.RR_PTR)
+		fmt.Printf("%v\n", ptr.Ptr)
 	}
 }
 
@@ -101,6 +119,14 @@ func main() {
 		return
 	}
 	
+	var err error
+	dnsConf, err = dns.ClientConfigFromFile("/etc/resolv.conf")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	
+		
 	wp := NewWorkerPool(10, reverseLookupJob)
 	sni, err := NewSubnetIterator(os.Args[1])
 	if err != nil {
