@@ -103,13 +103,13 @@ func reverseLookupJob(in interface{}) {
 		return
 	}
 	if r.Rcode != dns.RcodeSuccess {
-		fmt.Println("Failed: ", r.Rcode)
+		fmt.Println(ip, "failed: ", r.Rcode)
 		return
 	}
 	
 	for _, a := range r.Answer {
 		if ptr, ok := a.(*dns.RR_PTR); ok {
-			fmt.Printf("%v\n", ptr.Ptr)
+			fmt.Println(ip, ptr.Ptr)
 		}
 	}
 }
