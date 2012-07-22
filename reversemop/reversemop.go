@@ -100,12 +100,19 @@ func reverseLookupJob(in interface{}) {
 	m.SetQuestion(rname, dns.TypePTR)
 	m.MsgHdr.RecursionDesired = true
 	
-	srv := dnsConf.Servers[rand.Intn(len(dnsConf.Servers))]
-	r, err := c.Exchange(m, srv + ":" + dnsConf.Port)
-	if err != nil {
-		fmt.Println(ip, err)
-		return
+	var r *dns.Msg
+	for {
+		srv := dnsConf.Servers[rand.Intn(len(dnsConf.Servers))]
+		var err error
+		r, err = c.Exchange(m, srv + ":" + dnsConf.Port)
+		
+		if err == nil {
+			break
+		} else {
+			fmt.Println(ip, err)
+		}
 	}
+	
 	if r.Rcode != dns.RcodeSuccess {
 		fmt.Println(ip, "failed: ", dns.Rcode_str[r.Rcode])
 		return
