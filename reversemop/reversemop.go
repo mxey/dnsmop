@@ -5,10 +5,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"os"
 	"sync"
 	"github.com/miekg/dns"
 	"math/rand"
+	"io/ioutil"
+	"strings"
+	"flag"
 )
 
 var dnsConf *dns.ClientConfig
@@ -116,27 +118,51 @@ func reverseLookupJob(in interface{}) {
 	}
 }
 
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("Usage: reversemop 1.2.3.4/24")
-		return
+func ConfigFromServersFile(fn string) (*dns.ClientConfig, error) {
+	c := new(dns.ClientConfig)
+	c.Search = make([]string, 0)
+	c.Port = "53"
+	c.Ndots = 1
+	c.Timeout = 5
+	c.Attempts = 2
+
+	b, err := ioutil.ReadFile(fn)
+	if err != nil {
+		return c, err
 	}
 	
+	c.Servers = strings.Split(string(b), "\n")
+	return c, nil
+}
+
+func main() {
+	var fn string
+	flag.StringVar(&fn, "srv-file", "", "File with one DNS server per line")
+	flag.Parse()
+	
 	var err error
-	dnsConf, err = dns.ClientConfigFromFile("/etc/resolv.conf")
+	if len(fn) > 0 {
+		dnsConf, err = ConfigFromServersFile(fn)
+	} else {
+		dnsConf, err = dns.ClientConfigFromFile("/etc/resolv.conf")
+	}
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	
-		
-	wp := NewWorkerPool(10, reverseLookupJob)
-	sni, err := NewSubnetIterator(os.Args[1])
+	sn := flag.Arg(0)
+	if sn == "" {
+		fmt.Println("Usage: reversemop 1.2.3.4/24")
+		return
+	}			
+	sni, err := NewSubnetIterator(sn)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	wp := NewWorkerPool(10, reverseLookupJob)
 	wp.AddJob(sni.Current)
 	for sni.Next() {
 		wp.AddJob(sni.Current)
