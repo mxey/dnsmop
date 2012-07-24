@@ -5,15 +5,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"sync"
 	"github.com/miekg/dns"
-	"math/rand"
-	"io/ioutil"
-	"strings"
 	"flag"
+	".."
 )
-
-var dnsConf *dns.ClientConfig
 
 type SubnetIterator struct {
 	Current net.IP
@@ -58,88 +53,20 @@ func (sni *SubnetIterator) Next() bool {
 	return true
 }
 
-type WorkerPool struct {
-	inChan chan interface{}
-	wg sync.WaitGroup
-	jobFunction func(interface{})
-}
-
-func NewWorkerPool (workers int, jobFunction func(interface{})) *WorkerPool {
-	wp := &WorkerPool{jobFunction: jobFunction}
-	wp.inChan = make(chan interface{}, 100)
-	for i := 0; i < workers; i++ {
-		wp.wg.Add(1)
-		go wp.worker()
-	}
-	
-	return wp
-}
-
-func (wp *WorkerPool) AddJob(job interface{}) {
-	wp.inChan <- job
-}
-
-func (wp *WorkerPool) Shutdown() {
-	close(wp.inChan)
-	wp.wg.Wait()
-}
-
-func (wp *WorkerPool) worker() {
-	for in := <- wp.inChan; in != nil; in = <- wp.inChan {
-		wp.jobFunction(in)
-	}
-	wp.wg.Done()
-}
-
 func reverseLookupJob(in interface{}) {
 	ip := in.(net.IP)
-	m := new(dns.Msg)
-	c := new(dns.Client)
 	
 	rname, _ :=  dns.ReverseAddr(ip.String())
-	m.SetQuestion(rname, dns.TypePTR)
-	m.MsgHdr.RecursionDesired = true
-	
-	var r *dns.Msg
-	for {
-		srv := dnsConf.Servers[rand.Intn(len(dnsConf.Servers))]
-		var err error
-		r, err = c.Exchange(m, srv + ":" + dnsConf.Port)
-		
-		if err == nil {
-			break
-		} else {
-			fmt.Println(ip, err)
-		}
+	a, err := dnsmop.Query(rname, dns.TypePTR)
+	if err != nil {
+		fmt.Println(ip, err)
 	}
 	
-	if r.Rcode != dns.RcodeSuccess {
-		fmt.Println(ip, "failed: ", dns.Rcode_str[r.Rcode])
-		return
-	}
-	
-	for _, a := range r.Answer {
+	for _, a := range a {
 		if ptr, ok := a.(*dns.RR_PTR); ok {
 			fmt.Println(ip, ptr.Ptr)
 		}
 	}
-}
-
-func ConfigFromServersFile(fn string) (*dns.ClientConfig, error) {
-	c := new(dns.ClientConfig)
-	c.Search = make([]string, 0)
-	c.Port = "53"
-	c.Ndots = 1
-	c.Timeout = 5
-	c.Attempts = 2
-
-	b, err := ioutil.ReadFile(fn)
-	if err != nil {
-		return c, err
-	}
-	
-	c.Servers = strings.Split(string(b), "\n")
-	return c, nil
 }
 
 func main() {
@@ -149,9 +76,9 @@ func main() {
 	
 	var err error
 	if len(fn) > 0 {
-		dnsConf, err = ConfigFromServersFile(fn)
+		err = dnsmop.LoadConfigFromServersFile(fn)
 	} else {
-		dnsConf, err = dns.ClientConfigFromFile("/etc/resolv.conf")
+		err = dnsmop.LoadConfigFromSystem()
 	}
 	if err != nil {
 		fmt.Println(err)
@@ -169,7 +96,7 @@ func main() {
 		return
 	}
 
-	wp := NewWorkerPool(10, reverseLookupJob)
+	wp := dnsmop.NewWorkerPool(10, reverseLookupJob)
 	wp.AddJob(sni.Current)
 	for sni.Next() {
 		wp.AddJob(sni.Current)
