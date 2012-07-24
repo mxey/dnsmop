@@ -4,8 +4,6 @@ import (
 	"github.com/miekg/dns"
 	"io/ioutil"
 	"strings"
-	"errors"
-    "math/rand"
 )
 
 var dnsConf *dns.ClientConfig
@@ -34,29 +32,4 @@ func LoadConfigFromSystem() error {
 		dnsConf = c
 	}
 	return err
-}
-
-func Query(rname string, rtype uint16) ([]dns.RR, error) {
-	m := new(dns.Msg)
-	c := new(dns.Client)
-
-	m.SetQuestion(rname, dns.TypePTR)
-	m.MsgHdr.RecursionDesired = true
-
-	var r *dns.Msg
-	for {
-		srv := dnsConf.Servers[rand.Intn(len(dnsConf.Servers))]
-		var err error
-		r, err = c.Exchange(m, srv + ":" + dnsConf.Port)
-
-		if err == nil {
-			break
-		}
-	}
-
-	if r.Rcode != dns.RcodeSuccess {
-		return nil, errors.New(dns.Rcode_str[r.Rcode])
-	}
-
-	return r.Answer, nil
 }

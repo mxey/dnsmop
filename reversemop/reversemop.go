@@ -53,22 +53,6 @@ func (sni *SubnetIterator) Next() bool {
 	return true
 }
 
-func reverseLookupJob(in interface{}) {
-	ip := in.(net.IP)
-	
-	rname, _ :=  dns.ReverseAddr(ip.String())
-	a, err := dnsmop.Query(rname, dns.TypePTR)
-	if err != nil {
-		fmt.Println(ip, err)
-	}
-	
-	for _, a := range a {
-		if ptr, ok := a.(*dns.RR_PTR); ok {
-			fmt.Println(ip, ptr.Ptr)
-		}
-	}
-}
-
 func main() {
 	var fn string
 	flag.StringVar(&fn, "srv-file", "", "File with one DNS server per line")
@@ -96,11 +80,29 @@ func main() {
 		return
 	}
 
-	wp := dnsmop.NewWorkerPool(10, reverseLookupJob)
-	wp.Input <- sni.Current
-	for sni.Next() {
-		wp.Input <- sni.Current
-	}
+	wp := dnsmop.NewWorkerPool(10)
 	
-	wp.Shutdown()
+	go func() { 
+		for {
+			rname, _ :=  dns.ReverseAddr(sni.Current.String())
+			wp.Input <- dnsmop.WorkerInput{Name: rname, Type: dns.TypePTR}
+			
+			if !sni.Next() {
+				break
+			}
+		}
+		wp.Shutdown()
+	}()
+	
+	for out, ok := <- wp.Output; ok; out, ok = <- wp.Output {
+		if (out.Error != nil) {
+			fmt.Println(out.Name, out.Error)
+		} else {
+			for _, a := range out.Answer {
+				if ptr, ok := a.(*dns.RR_PTR); ok {
+					fmt.Println(out.Name, ptr.Ptr)
+				}
+			}
+		}
+	}
 }
