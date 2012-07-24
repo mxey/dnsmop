@@ -97,9 +97,9 @@ func main() {
 	}
 
 	wp := dnsmop.NewWorkerPool(10, reverseLookupJob)
-	wp.AddJob(sni.Current)
+	wp.Input <- sni.Current
 	for sni.Next() {
-		wp.AddJob(sni.Current)
+		wp.Input <- sni.Current
 	}
 	
 	wp.Shutdown()
