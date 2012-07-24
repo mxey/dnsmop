@@ -51,8 +51,6 @@ func Query(rname string, rtype uint16) ([]dns.RR, error) {
 
 		if err == nil {
 			break
-		} else {
-			return nil, err
 		}
 	}
 
