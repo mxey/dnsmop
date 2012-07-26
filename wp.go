@@ -1,9 +1,9 @@
 package dnsmop
 
 import (
-	"sync"
 	"github.com/miekg/dns"
 	"math/rand"
+	"sync"
 )
 
 type WorkerInput struct {
@@ -12,22 +12,22 @@ type WorkerInput struct {
 }
 
 type WorkerOutput struct {
-	Name string
-	Error error
+	Name   string
+	Error  error
 	Answer []dns.RR
 }
 
 type WorkerPool struct {
-	Input chan WorkerInput
+	Input  chan WorkerInput
 	Output chan WorkerOutput
-	wg sync.WaitGroup
+	wg     sync.WaitGroup
 }
 
 type DNSError struct {
 	Rcode int
 }
 
-func NewWorkerPool (workers int) *WorkerPool {
+func NewWorkerPool(workers int) *WorkerPool {
 	wp := &WorkerPool{}
 	wp.Input = make(chan WorkerInput, 100)
 	wp.Output = make(chan WorkerOutput, 100)
@@ -48,22 +48,22 @@ func (wp *WorkerPool) Shutdown() {
 func (wp *WorkerPool) worker() {
 	c := new(dns.Client)
 
-	for in, ok := <- wp.Input; ok; in, ok = <- wp.Input {
-		m := new(dns.Msg)		
+	for in, ok := <-wp.Input; ok; in, ok = <-wp.Input {
+		m := new(dns.Msg)
 		m.SetQuestion(in.Name, in.Type)
 		m.MsgHdr.RecursionDesired = true
-		
+
 		var r *dns.Msg
 		for {
 			srv := dnsConf.Servers[rand.Intn(len(dnsConf.Servers))]
 			var err error
-			r, err = c.Exchange(m, srv + ":" + dnsConf.Port)
-		
+			r, err = c.Exchange(m, srv+":"+dnsConf.Port)
+
 			if err == nil {
 				break
 			}
 		}
-		
+
 		if r.Rcode == dns.RcodeSuccess {
 			wp.Output <- WorkerOutput{Name: in.Name, Answer: r.Answer}
 		} else {

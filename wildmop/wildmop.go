@@ -1,16 +1,16 @@
 package main
 
 import (
-	"github.com/miekg/dns"
-	"flag"
 	".."
+	"flag"
 	"fmt"
+	"github.com/miekg/dns"
 	"math/rand"
-	"os"
 	"net"
+	"os"
 )
 
-func randalpha(l int) (string) {
+func randalpha(l int) string {
 	alphabet := "ABCDEFJKLMNOPQRSTUVWXYZ"
 	buf := make([]byte, l)
 	for i := 0; i < l; i++ {
@@ -44,22 +44,22 @@ func main() {
 	if dom == "" {
 		fmt.Println("Usage: wildmop DOMAIN")
 		return
-	}			
+	}
 
 	wp := dnsmop.NewWorkerPool(10)
 	numQueries := 100
 
-	go func() { 
+	go func() {
 		for i := 0; i < numQueries; i++ {
 			rname := randalpha(5) + "." + dom + "."
 			wp.Input <- dnsmop.WorkerInput{Name: rname, Type: dns.TypeA}
 		}
 		wp.Shutdown()
 	}()
-	
+
 	var prev net.IP
 
-	for out, ok := <- wp.Output; ok; out, ok = <- wp.Output {
+	for out, ok := <-wp.Output; ok; out, ok = <-wp.Output {
 		if out.Error == nil {
 			for _, a := range out.Answer {
 				if rr, ok := a.(*dns.RR_A); ok {
@@ -79,6 +79,6 @@ func main() {
 			}
 		}
 	}
-	
+
 	fmt.Println("wildcard")
 }

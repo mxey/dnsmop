@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/miekg/dns"
-	"flag"
 	".."
-	"io/ioutil"
+	"flag"
 	"fmt"
-	"strings"
+	"github.com/miekg/dns"
+	"io/ioutil"
 	"strconv"
+	"strings"
 )
 
 func createRequests(ch chan dnsmop.WorkerInput, rname string) {
@@ -37,38 +37,38 @@ func main() {
 	if dom == "" {
 		fmt.Println("Usage: zonemop DOMAIN")
 		return
-	}			
+	}
 
 	b, err := ioutil.ReadFile(fnWords)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	
+
 	words := strings.Split(string(b), "\n")
 
 	wp := dnsmop.NewWorkerPool(10)
 
-	go func() { 
-		createRequests(wp.Input, dom + ".")
-		
-		for _, w := range(words) {
+	go func() {
+		createRequests(wp.Input, dom+".")
+
+		for _, w := range words {
 			rname := w + "." + dom + "."
 			if len(w) == 0 {
 				continue
 			}
-			
+
 			createRequests(wp.Input, rname)
-			
+
 			for i := 0; i < 20; i++ {
-				createRequests(wp.Input, w + strconv.Itoa(i) + "." + dom + ".")
+				createRequests(wp.Input, w+strconv.Itoa(i)+"."+dom+".")
 			}
-			
+
 		}
 		wp.Shutdown()
 	}()
-	
-	for out, ok := <- wp.Output; ok; out, ok = <- wp.Output {
+
+	for out, ok := <-wp.Output; ok; out, ok = <-wp.Output {
 		if out.Error == nil {
 			for _, a := range out.Answer {
 				fmt.Println(a)
