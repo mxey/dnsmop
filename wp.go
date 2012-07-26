@@ -4,7 +4,6 @@ import (
 	"sync"
 	"github.com/miekg/dns"
 	"math/rand"
-	"errors"
 )
 
 type WorkerInput struct {
@@ -22,6 +21,10 @@ type WorkerPool struct {
 	Input chan WorkerInput
 	Output chan WorkerOutput
 	wg sync.WaitGroup
+}
+
+type DNSError struct {
+	Rcode int
 }
 
 func NewWorkerPool (workers int) *WorkerPool {
@@ -64,8 +67,12 @@ func (wp *WorkerPool) worker() {
 		if r.Rcode == dns.RcodeSuccess {
 			wp.Output <- WorkerOutput{Name: in.Name, Answer: r.Answer}
 		} else {
-			wp.Output <- WorkerOutput{Name: in.Name, Error: errors.New(dns.Rcode_str[r.Rcode])}
+			wp.Output <- WorkerOutput{Name: in.Name, Error: &DNSError{Rcode: r.Rcode}}
 		}
 	}
 	wp.wg.Done()
+}
+
+func (err *DNSError) Error() string {
+	return dns.Rcode_str[err.Rcode]
 }
