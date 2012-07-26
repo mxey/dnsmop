@@ -5,3 +5,4 @@ mail
 mx
 svn
 cvs
+ns
