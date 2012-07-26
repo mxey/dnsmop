@@ -7,7 +7,14 @@ import (
 	"io/ioutil"
 	"fmt"
 	"strings"
+	"strconv"
 )
+
+func createRequests(ch chan dnsmop.WorkerInput, rname string) {
+	ch <- dnsmop.WorkerInput{Name: rname, Type: dns.TypeA}
+	ch <- dnsmop.WorkerInput{Name: rname, Type: dns.TypeAAAA}
+	ch <- dnsmop.WorkerInput{Name: rname, Type: dns.TypeMX}
+}
 
 func main() {
 	var fnConf, fnWords string
@@ -43,11 +50,20 @@ func main() {
 	wp := dnsmop.NewWorkerPool(10)
 
 	go func() { 
+		createRequests(wp.Input, dom + ".")
+		
 		for _, w := range(words) {
 			rname := w + "." + dom + "."
-			if len(w) > 0 {
-				wp.Input <- dnsmop.WorkerInput{Name: rname, Type: dns.TypeA}
+			if len(w) == 0 {
+				continue
 			}
+			
+			createRequests(wp.Input, rname)
+			
+			for i := 0; i < 20; i++ {
+				createRequests(wp.Input, w + strconv.Itoa(i) + "." + dom + ".")
+			}
+			
 		}
 		wp.Shutdown()
 	}()
