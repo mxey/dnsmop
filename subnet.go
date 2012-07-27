@@ -1,8 +1,6 @@
 package main
 
 import (
-	".."	
-	"flag"
 	"fmt"
 	"github.com/miekg/dns"
 	"net"
@@ -33,14 +31,14 @@ func (sni *SubnetIterator) Next() bool {
 	a := sni.Current
 	for i := 15; i >= 0; i-- {
 		b := a[i]
-		
+
 		if b < 255 {
 			a[i] = b + 1
 
 			for ii := i + 1; ii <= 15; ii++ {
 				a[ii] = 0
 			}
-			
+
 			break
 		}
 	}
@@ -53,48 +51,26 @@ func (sni *SubnetIterator) Next() bool {
 	return true
 }
 
-func main() {
-	var fn string
-	flag.StringVar(&fn, "srv-file", "", "File with one DNS server per line")
-	flag.Parse()
-
-	var err error
-	if len(fn) > 0 {
-		err = dnsmop.LoadConfigFromServersFile(fn)
-	} else {
-		err = dnsmop.LoadConfigFromSystem()
-	}
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	sn := flag.Arg(0)
-	if sn == "" {
-		fmt.Println("Usage: reversemop 1.2.3.4/24")
-		return
-	}
+func subnetCmd(sn string) {
 	sni, err := NewSubnetIterator(sn)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	wp := dnsmop.NewWorkerPool(10)
-
 	go func() {
 		for {
 			rname, _ := dns.ReverseAddr(sni.Current.String())
-			wp.Input <- dnsmop.WorkerInput{Name: rname, Type: dns.TypePTR}
+			workerPool.Input <- WorkerInput{Name: rname, Type: dns.TypePTR}
 
 			if !sni.Next() {
 				break
 			}
 		}
-		wp.Shutdown()
+		workerPool.Shutdown()
 	}()
 
-	for out, ok := <-wp.Output; ok; out, ok = <-wp.Output {
+	for out, ok := <-workerPool.Output; ok; out, ok = <-workerPool.Output {
 		if out.Error != nil {
 			fmt.Println(out.Name, out.Error)
 		} else {

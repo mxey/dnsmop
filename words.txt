@@ -6,3 +6,6 @@ mx
 svn
 cvs
 ns
+admin
+test
+downloads
