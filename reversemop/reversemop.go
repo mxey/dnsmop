@@ -1,9 +1,7 @@
 package main
 
 import (
-	".."
-	"bytes"
-	"encoding/binary"
+	".."	
 	"flag"
 	"fmt"
 	"github.com/miekg/dns"
@@ -23,7 +21,7 @@ func NewSubnetIterator(s string) (SubnetIterator, error) {
 	}
 	sni.Net = *ipnet
 
-	sni.Current = ipnet.IP.Mask(ipnet.Mask)
+	sni.Current = ipnet.IP.Mask(ipnet.Mask).To16()
 	if err != nil {
 		return sni, err
 	}
@@ -32,24 +30,26 @@ func NewSubnetIterator(s string) (SubnetIterator, error) {
 }
 
 func (sni *SubnetIterator) Next() bool {
-	var intIP int32
-	buf := bytes.NewBuffer(sni.Current)
-	if err := binary.Read(buf, binary.BigEndian, &intIP); err != nil {
-		panic("Internal error converting IP to integer")
-	}
-	intIP += 1
+	a := sni.Current
+	for i := 15; i >= 0; i-- {
+		b := a[i]
+		
+		if b < 255 {
+			a[i] = b + 1
 
-	buf = new(bytes.Buffer)
-	if err := binary.Write(buf, binary.BigEndian, intIP); err != nil {
-		panic("Internal error converting integer to IP")
+			for ii := i + 1; ii <= 15; ii++ {
+				a[ii] = 0
+			}
+			
+			break
+		}
 	}
-	ip := buf.Bytes()
 
-	if !sni.Net.Contains(ip) {
+	if !sni.Net.Contains(a) {
 		return false
 	}
 
-	sni.Current = ip
+	sni.Current = a
 	return true
 }
 
