@@ -6,29 +6,7 @@ import (
 	"net"
 )
 
-type SubnetIterator struct {
-	Current net.IP
-	Net     net.IPNet
-}
-
-func NewSubnetIterator(s string) (SubnetIterator, error) {
-	sni := SubnetIterator{}
-	_, ipnet, err := net.ParseCIDR(s)
-	if err != nil {
-		return sni, err
-	}
-	sni.Net = *ipnet
-
-	sni.Current = ipnet.IP.Mask(ipnet.Mask).To16()
-	if err != nil {
-		return sni, err
-	}
-
-	return sni, nil
-}
-
-func (sni *SubnetIterator) Next() bool {
-	a := sni.Current
+func incrementIP(a net.IP) net.IP {
 	for i := 15; i >= 0; i-- {
 		b := a[i]
 
@@ -42,30 +20,21 @@ func (sni *SubnetIterator) Next() bool {
 			break
 		}
 	}
-
-	if !sni.Net.Contains(a) {
-		return false
-	}
-
-	sni.Current = a
-	return true
+	return a
 }
 
 func subnetCmd(sn string) {
-	sni, err := NewSubnetIterator(sn)
+	_, ipnet, err := net.ParseCIDR(sn)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	ip := ipnet.IP.Mask(ipnet.Mask).To16()
 
 	go func() {
-		for {
-			rname, _ := dns.ReverseAddr(sni.Current.String())
+		for ; ipnet.Contains(ip); ip = incrementIP(ip) {
+			rname, _ := dns.ReverseAddr(ip.String())
 			workerPool.Input <- WorkerInput{Name: rname, Type: dns.TypePTR}
-
-			if !sni.Next() {
-				break
-			}
 		}
 		workerPool.Shutdown()
 	}()
