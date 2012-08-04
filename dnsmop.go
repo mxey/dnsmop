@@ -1,9 +1,9 @@
 package main
 
 import (
+	"./dns"
 	"flag"
 	"fmt"
-	"github.com/miekg/dns"
 	"io"
 	"io/ioutil"
 	"math/rand"
