@@ -116,10 +116,10 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "Usage: dnsmop COMMAND")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "Commands:")
-	fmt.Fprintln(w, "help       print this help")
-	fmt.Fprintln(w, "zone       scan a zone for subdomains using a word list")
-	fmt.Fprintln(w, "subnet     map a subnet with reverse DNS queries")
-	fmt.Fprintln(w, "wildcard   test a domain for a wildcard record")
+	fmt.Fprintln(w, "help                  print this help")
+	fmt.Fprintln(w, "zone example.com      scan a zone for subdomains using a word list")
+	fmt.Fprintln(w, "subnet 1.2.3.4/24     map a subnet with reverse DNS queries")
+	fmt.Fprintln(w, "wildcard example.com  test a domain for a wildcard record")
 	fmt.Fprintln(w, "")
 }
 
@@ -165,15 +165,18 @@ func main() {
 
 	workerPool = newWorkerPool(10)
 
+	a := flags.Arg(0)
+	if len(a) == 0 {
+		usage(os.Stderr)
+		os.Exit(1)
+	}
+	
 	switch cmd {
 	case "zone":
-		d := flags.Arg(0)
-		zoneCmd(d, wordsFn)
+		zoneCmd(a, wordsFn)
 	case "subnet":
-		sn := flags.Arg(0)
-		subnetCmd(sn)
+		subnetCmd(a)
 	case "wildcard":
-		d := flags.Arg(0)
-		wildcardCmd(d)
+		wildcardCmd(a)
 	}
 }
