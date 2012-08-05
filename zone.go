@@ -13,6 +13,7 @@ func createRequests(rname string) {
 	workerPool.Input <- WorkerInput{Name: rname, Type: dns.TypeA}
 	workerPool.Input <- WorkerInput{Name: rname, Type: dns.TypeAAAA}
 	workerPool.Input <- WorkerInput{Name: rname, Type: dns.TypeMX}
+	workerPool.Input <- WorkerInput{Name: rname, Type: dns.TypeTXT}
 }
 
 func loadWords(fn string) ([]string, error) {
