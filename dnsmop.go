@@ -170,7 +170,7 @@ func main() {
 		usage(os.Stderr)
 		os.Exit(1)
 	}
-	
+
 	switch cmd {
 	case "zone":
 		zoneCmd(a, wordsFn)
