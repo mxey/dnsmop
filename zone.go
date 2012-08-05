@@ -28,6 +28,7 @@ func zoneCmd(dom, fnWords string) {
 	words, err := loadWords(fnWords)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		return
 	}
 
 	go func() {
