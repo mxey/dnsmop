@@ -123,8 +123,6 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "")
 }
 
-var flags *flag.FlagSet
-
 func main() {
 	if len(os.Args) < 2 {
 		usage(os.Stderr)
@@ -132,9 +130,9 @@ func main() {
 	}
 
 	cmd := os.Args[1]
-	flags = flag.NewFlagSet(cmd, flag.ExitOnError)
+	fs := flag.NewFlagSet(cmd, flag.ExitOnError)
 	var srvFn string
-	flags.StringVar(&srvFn, "srv-file", "", "File with one DNS server per line")
+	fs.StringVar(&srvFn, "srv-file", "", "File with one DNS server per line")
 
 	var wordsFn string
 	switch cmd {
@@ -142,7 +140,7 @@ func main() {
 		usage(os.Stdout)
 		os.Exit(0)
 	case "zone":
-		flags.StringVar(&wordsFn, "words-file", "/usr/share/dict/words", "Word list file")
+		fs.StringVar(&wordsFn, "words-file", "/usr/share/dict/words", "Word list file")
 	case "subnet":
 	case "wildcard":
 	default:
@@ -150,7 +148,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	flags.Parse(os.Args[2:])
+	fs.Parse(os.Args[2:])
 
 	var err error
 	if len(srvFn) > 0 {
@@ -165,7 +163,7 @@ func main() {
 
 	workerPool = newWorkerPool(10)
 
-	a := flags.Arg(0)
+	a := fs.Arg(0)
 	if len(a) == 0 {
 		usage(os.Stderr)
 		os.Exit(1)
