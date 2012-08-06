@@ -158,7 +158,7 @@ func main() {
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return
+		os.Exit(1)
 	}
 
 	workerPool = newWorkerPool(10)
