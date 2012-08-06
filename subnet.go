@@ -26,8 +26,7 @@ func incrementIP(a net.IP) net.IP {
 func subnetCmd(sn string) {
 	_, ipnet, err := net.ParseCIDR(sn)
 	if err != nil {
-		fmt.Println(err)
-		return
+		exit(err)
 	}
 	ip := ipnet.IP.Mask(ipnet.Mask).To16()
 
