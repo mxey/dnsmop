@@ -27,16 +27,16 @@ type WorkerPool struct {
 	Input  chan WorkerInput
 	Output chan WorkerOutput
 	wg     sync.WaitGroup
+	conf   *dns.ClientConfig
 }
 
 type DNSError struct {
 	Rcode int
 }
 
-var dnsConf *dns.ClientConfig
 var workerPool *WorkerPool
 
-func newWorkerPool(workers int) *WorkerPool {
+func newWorkerPool(workers int) (*WorkerPool, error) {
 	wp := &WorkerPool{}
 	wp.Input = make(chan WorkerInput, 100)
 	wp.Output = make(chan WorkerOutput, 100)
@@ -45,7 +45,27 @@ func newWorkerPool(workers int) *WorkerPool {
 		go wp.worker()
 	}
 
-	return wp
+	var err error
+	wp.conf, err = dns.ClientConfigFromFile("/etc/resolv.conf");
+	return wp, err
+}
+
+func (wp *WorkerPool) loadServers(fn string) error {
+	c := new(dns.ClientConfig)
+	c.Search = make([]string, 0)
+	c.Port = "53"
+	c.Ndots = 1
+	c.Timeout = 5
+	c.Attempts = 2
+
+	b, err := ioutil.ReadFile(fn)
+	if err != nil {
+		return err
+	}
+
+	c.Servers = strings.Split(string(b), "\n")
+	wp.conf = c
+	return nil
 }
 
 func (wp *WorkerPool) Shutdown() {
@@ -64,9 +84,9 @@ func (wp *WorkerPool) worker() {
 
 		var r *dns.Msg
 		for {
-			srv := dnsConf.Servers[rand.Intn(len(dnsConf.Servers))]
+			srv := wp.conf.Servers[rand.Intn(len(wp.conf.Servers))]
 			var err error
-			r, err = c.Exchange(m, srv+":"+dnsConf.Port)
+			r, err = c.Exchange(m, srv+":"+wp.conf.Port)
 
 			if err == nil {
 				break
@@ -86,33 +106,18 @@ func (err *DNSError) Error() string {
 	return dns.Rcode_str[err.Rcode]
 }
 
-func loadConfigFromServersFile(fn string) error {
-	c := new(dns.ClientConfig)
-	c.Search = make([]string, 0)
-	c.Port = "53"
-	c.Ndots = 1
-	c.Timeout = 5
-	c.Attempts = 2
 
-	b, err := ioutil.ReadFile(fn)
-	if err != nil {
-		return err
+func usage(err bool) {
+	var w io.Writer
+	var ret int
+	if err  {
+		w = os.Stderr
+		ret = 1
+	} else {
+		w = os.Stdout
+		ret = 0
 	}
-
-	c.Servers = strings.Split(string(b), "\n")
-	dnsConf = c
-	return nil
-}
-
-func loadConfigFromSystem() error {
-	c, err := dns.ClientConfigFromFile("/etc/resolv.conf")
-	if err == nil {
-		dnsConf = c
-	}
-	return err
-}
-
-func usage(w io.Writer) {
+	
 	fmt.Fprintln(w, "Usage: dnsmop COMMAND")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "Commands:")
@@ -121,12 +126,18 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "subnet 1.2.3.4/24     map a subnet with reverse DNS queries")
 	fmt.Fprintln(w, "wildcard example.com  test a domain for a wildcard record")
 	fmt.Fprintln(w, "")
+	
+	os.Exit(ret)
+}
+
+func exit(err error) {
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
 }
 
 func main() {
 	if len(os.Args) < 2 {
-		usage(os.Stderr)
-		os.Exit(1)
+		usage(true)
 	}
 
 	cmd := os.Args[1]
@@ -137,36 +148,31 @@ func main() {
 	var wordsFn string
 	switch cmd {
 	case "help":
-		usage(os.Stdout)
-		os.Exit(0)
+		usage(false)
 	case "zone":
 		fs.StringVar(&wordsFn, "words-file", "/usr/share/dict/words", "Word list file")
 	case "subnet":
 	case "wildcard":
 	default:
-		usage(os.Stderr)
-		os.Exit(1)
+		usage(true)
 	}
 
 	fs.Parse(os.Args[2:])
-
 	var err error
-	if len(srvFn) > 0 {
-		err = loadConfigFromServersFile(srvFn)
-	} else {
-		err = loadConfigFromSystem()
-	}
+	workerPool, err = newWorkerPool(10)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		exit(err)
 	}
-
-	workerPool = newWorkerPool(10)
+	
+	if len(srvFn) > 0 {
+		if err := workerPool.loadServers(srvFn); err != nil {
+			exit(err)
+		}
+	}
 
 	a := fs.Arg(0)
 	if len(a) == 0 {
-		usage(os.Stderr)
-		os.Exit(1)
+		usage(true)
 	}
 
 	switch cmd {
