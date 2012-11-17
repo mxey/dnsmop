@@ -77,7 +77,7 @@ func (wp *WorkerPool) Shutdown() {
 func (wp *WorkerPool) worker() {
 	c := new(dns.Client)
 
-	for in, ok := <-wp.Input; ok; in, ok = <-wp.Input {
+	for in := range wp.Input {
 		m := new(dns.Msg)
 		m.SetQuestion(in.Name, in.Type)
 		m.MsgHdr.RecursionDesired = true
