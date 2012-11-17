@@ -4,7 +4,6 @@ import (
 	"./dns"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"strconv"
 	"strings"
 )
