@@ -43,7 +43,7 @@ func subnetCmd(sn string) {
 			fmt.Println(out.Name, out.Error)
 		} else {
 			for _, a := range out.Answer {
-				if ptr, ok := a.(*dns.RR_PTR); ok {
+				if ptr, ok := a.(*dns.PTR); ok {
 					fmt.Println(out.Name, ptr.Ptr)
 				}
 			}

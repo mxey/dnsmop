@@ -86,7 +86,7 @@ func (wp *WorkerPool) worker() {
 		for {
 			srv := wp.conf.Servers[rand.Intn(len(wp.conf.Servers))]
 			var err error
-			r, err = c.Exchange(m, srv+":"+wp.conf.Port)
+			r, _, err = c.Exchange(m, srv+":"+wp.conf.Port)
 
 			if err == nil {
 				break
@@ -103,7 +103,7 @@ func (wp *WorkerPool) worker() {
 }
 
 func (err *DNSError) Error() string {
-	return dns.Rcode_str[err.Rcode]
+	return dns.RcodeToString[err.Rcode]
 }
 
 

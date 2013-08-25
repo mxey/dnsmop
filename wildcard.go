@@ -38,7 +38,7 @@ func wildcardCmd(dom string) {
 	for out, ok := <-workerPool.Output; ok; out, ok = <-workerPool.Output {
 		if out.Error == nil {
 			for _, a := range out.Answer {
-				if rr, ok := a.(*dns.RR_A); ok {
+				if rr, ok := a.(*dns.A); ok {
 					switch {
 					case prev == nil:
 						prev = rr.A
