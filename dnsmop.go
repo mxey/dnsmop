@@ -46,7 +46,7 @@ func newWorkerPool(workers int) (*WorkerPool, error) {
 	}
 
 	var err error
-	wp.conf, err = dns.ClientConfigFromFile("/etc/resolv.conf");
+	wp.conf, err = dns.ClientConfigFromFile("/etc/resolv.conf")
 	return wp, err
 }
 
@@ -106,18 +106,17 @@ func (err *DNSError) Error() string {
 	return dns.RcodeToString[err.Rcode]
 }
 
-
 func usage(err bool) {
 	var w io.Writer
 	var ret int
-	if err  {
+	if err {
 		w = os.Stderr
 		ret = 1
 	} else {
 		w = os.Stdout
 		ret = 0
 	}
-	
+
 	fmt.Fprintln(w, "Usage: dnsmop COMMAND")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "Commands:")
@@ -126,7 +125,7 @@ func usage(err bool) {
 	fmt.Fprintln(w, "subnet 1.2.3.4/24     map a subnet with reverse DNS queries")
 	fmt.Fprintln(w, "wildcard example.com  test a domain for a wildcard record")
 	fmt.Fprintln(w, "")
-	
+
 	os.Exit(ret)
 }
 
@@ -163,7 +162,7 @@ func main() {
 	if err != nil {
 		exit(err)
 	}
-	
+
 	if len(srvFn) > 0 {
 		if err := workerPool.loadServers(srvFn); err != nil {
 			exit(err)
