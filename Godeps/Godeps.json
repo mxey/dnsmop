@@ -1,0 +1,10 @@
+{
+	"ImportPath": "github.com/mxey/dnsmop",
+	"GoVersion": "go1.2",
+	"Deps": [
+		{
+			"ImportPath": "github.com/miekg/dns",
+			"Rev": "6b32a711e91479a553009d306c9e214e708a8075"
+		}
+	]
+}
