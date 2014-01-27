@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/miekg/dns"
+	"./third_party/github.com/miekg/dns"
 	"fmt"
 	"io/ioutil"
 	"strconv"
