@@ -1,11 +1,12 @@
 package main
 
 import (
-	"./third_party/github.com/miekg/dns"
 	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
+
+	"github.com/miekg/dns"
 )
 
 func createRequests(rname string) {

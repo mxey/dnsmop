@@ -1,7 +1,6 @@
 package main
 
 import (
-	"./third_party/github.com/miekg/dns"
 	"flag"
 	"fmt"
 	"io"
@@ -10,6 +9,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/miekg/dns"
 )
 
 type WorkerInput struct {

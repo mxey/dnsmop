@@ -1,11 +1,12 @@
 package main
 
 import (
-	"./third_party/github.com/miekg/dns"
 	"fmt"
 	"math/rand"
 	"net"
 	"os"
+
+	"github.com/miekg/dns"
 )
 
 func randalpha(l int) string {

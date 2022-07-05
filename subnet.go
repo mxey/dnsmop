@@ -1,9 +1,10 @@
 package main
 
 import (
-	"./third_party/github.com/miekg/dns"
 	"fmt"
 	"net"
+
+	"github.com/miekg/dns"
 )
 
 func incrementIP(a net.IP) net.IP {
